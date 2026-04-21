@@ -23,9 +23,9 @@ class YellowLineDebugger:
 
         # ROI 比例：只看下方地面区域
         self.roi_y_ratio_min = 0.55
-        self.roi_y_ratio_max = 0.95
-        self.roi_x_ratio_min = 0.10
-        self.roi_x_ratio_max = 0.90
+        self.roi_y_ratio_max = 1.0
+        self.roi_x_ratio_min = 0
+        self.roi_x_ratio_max = 1.0
 
         # 峰值/间距阈值
         self.peak_thresh = 20.0
