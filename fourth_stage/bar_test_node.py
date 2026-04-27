@@ -18,10 +18,10 @@ class BarColorDetector:
         self.upper_bar = np.array([100, 45, 80], dtype=np.uint8)
 
         # ========= ROI =========
-        self.roi_x_ratio_min = 0.3
-        self.roi_x_ratio_max = 0.7
-        self.roi_y_ratio_min = 0.20
-        self.roi_y_ratio_max = 0.75
+        self.roi_x_ratio_min = 0.2
+        self.roi_x_ratio_max = 0.8
+        self.roi_y_ratio_min = 0.10
+        self.roi_y_ratio_max = 0.90
 
         # ========= 形态学 =========
         self.kernel_open = np.ones((3, 3), np.uint8)

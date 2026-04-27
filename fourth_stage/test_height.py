@@ -22,7 +22,7 @@ def main(args=None):
     try:
         values = [0.0] * 12
         values[0] = 0.0   # roll
-        values[2] = 0.17  # height
+        values[2] = 0.25  # height
         node.publish_yaml_vecxd("des_roll_pitch_height_motion", values, is_user=1)
         node.publish_yaml_vecxd("des_roll_pitch_height", values, is_user=1)
 
@@ -39,24 +39,34 @@ def main(args=None):
         msg.step_height = [0.03,0.03]
         msg.rpy_des = [0.0,0.0,0.0]
         Ctrl.Send_cmd(msg)
-        time.sleep(15)
+        time.sleep(5)
+
+        values = [0.0] * 12
+        values[0] = 0.0   # roll
+        values[2] = 0.17  # height
+        node.publish_yaml_vecxd("des_roll_pitch_height_motion", values, is_user=1)
+        node.publish_yaml_vecxd("des_roll_pitch_height", values, is_user=1)
+
+        msg.mode = 11
+        msg.gait_id = 3
+        msg.life_count += 1
+        msg.vel_des = [0.3,0,0]
+        msg.step_height = [0.03,0.03]
+        msg.rpy_des = [0.0,0.0,0.0]
+        Ctrl.Send_cmd(msg)
+        time.sleep(5)
 
         values = [0.0] * 12
         values[0] = 0.0   # roll
         values[2] = 0.25  # height
         node.publish_yaml_vecxd("des_roll_pitch_height", values, is_user=1)
         node.publish_yaml_vecxd("des_roll_pitch_height_motion", values, is_user=1)
-
-        msg.mode = 12 # Recovery stand
-        msg.gait_id = 0
-        msg.life_count += 1 # Command will take effect when life_count update
-        Ctrl.Send_cmd(msg)
-        Ctrl.Wait_finish(12, 0)
+        time.sleep(2)
 
         msg.mode = 11
         msg.gait_id = 3
         msg.life_count += 1
-        msg.vel_des = [0.1,0,0]
+        msg.vel_des = [0.3,0,0]
         msg.step_height = [0.03,0.03]
         msg.rpy_des = [0.0,0.0,0.0]
         Ctrl.Send_cmd(msg)
