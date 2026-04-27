@@ -1219,20 +1219,20 @@ class ObstacleDashedTaskNode(Node):
         self.declare_parameter('global_lateral_search_vy', 0.30)
         self.declare_parameter('global_center_stable_frames', 3)
         self.declare_parameter('global_after_task_shift_vy', 0.30)
-        self.declare_parameter('global_after_task_shift_distance_m', 0.60)
+        self.declare_parameter('global_after_task_shift_distance_m', 0.80)
         # 障碍物流程完成后，如果虚线在右边，左移距离更大
         self.declare_parameter('global_after_obstacle_shift_distance_left_dash_m', 0.20)
         self.declare_parameter('global_after_obstacle_shift_distance_right_dash_m', 0.90)
 
         # 限高杆流程参数
-        self.declare_parameter('bar_search_forward_speed', 0.40)
+        self.declare_parameter('bar_search_forward_speed', 0.50)
         self.declare_parameter('bar_trigger_distance_m', 0.40)
         self.declare_parameter('bar_align_vy_k', 0.35)
         self.declare_parameter('bar_align_vy_max', 0.30)
         self.declare_parameter('bar_align_vy_min', 0.20)
         self.declare_parameter('bar_center_px_deadband', 7)
         self.declare_parameter('bar_center_stable_frames', 3)
-        self.declare_parameter('backoff_after_hit_speed', 0.40)
+        self.declare_parameter('backoff_after_hit_speed', 0.50)
         self.declare_parameter('backoff_bar_depth_tolerance_m', 0.05)
         self.declare_parameter('backoff_min_time_s', 0.30)
 
@@ -1263,7 +1263,7 @@ class ObstacleDashedTaskNode(Node):
 
         self.declare_parameter('follow_forward_speed', 0.40)
         self.declare_parameter('follow_align_vy_k', 0.25)
-        self.declare_parameter('dashed_lost_stop_frames', 3)
+        self.declare_parameter('dashed_lost_stop_frames', 2)
 
         # =========================
         # 虚线消失后的后续任务参数
@@ -1272,8 +1272,8 @@ class ObstacleDashedTaskNode(Node):
         self.declare_parameter('tf_child_frame', 'base_link')
 
         # 虚线识别不到后，继续向前走一小段距离，单位：米
-        self.declare_parameter('post_dash_forward_distance_m', 0.25)
-        self.declare_parameter('post_dash_forward_speed', 0.40)
+        self.declare_parameter('post_dash_forward_distance_m', 0.23)
+        self.declare_parameter('post_dash_forward_speed', 0.30)
 
         # 第一次转向角度，单位：度。左边虚线 -> 右转；右边虚线 -> 左转
         self.declare_parameter('post_dash_turn_angle_deg', 30.0)
@@ -1282,7 +1282,7 @@ class ObstacleDashedTaskNode(Node):
 
         # 第一次转向完成后，继续前进一段距离，单位：米
         self.declare_parameter('post_turn_forward_distance_m', 0.50)
-        self.declare_parameter('post_turn_forward_speed', 0.40)
+        self.declare_parameter('post_turn_forward_speed', 0.30)
 
         # 第二次转向角度，方向与第一次相反，单位：度
         self.declare_parameter('post_second_turn_angle_deg', 30.0)
@@ -1297,33 +1297,33 @@ class ObstacleDashedTaskNode(Node):
         self.declare_parameter('align_forward_speed_far', 0.40)
         self.declare_parameter('align_forward_speed_near', 0.40)
         self.declare_parameter('align_vy_k', 0.35)
-        self.declare_parameter('align_vy_max', 0.15)
-        self.declare_parameter('align_vy_min', 0.10)
+        self.declare_parameter('align_vy_max', 0.30)
+        self.declare_parameter('align_vy_min', 0.20)
         self.declare_parameter('target_stable_frames', 3)
         self.declare_parameter('hit_trigger_distance_m', 0.20)
         self.declare_parameter('center_px_deadband', 7)
 
         self.declare_parameter('hit_blue_ball_speed', 0.30)
         self.declare_parameter('hit_blue_ball_distance', 0.25)
-        self.declare_parameter('hit_white_ball_speed', 0.40)
-        self.declare_parameter('hit_white_ball_distance', 0.30)
+        self.declare_parameter('hit_white_ball_speed', 0.30)
+        self.declare_parameter('hit_white_ball_distance', 0.45)
         self.declare_parameter('hit_cola_speed', 0.30)
         self.declare_parameter('hit_cola_distance', 0.25)
         self.declare_parameter('hit_timeout_s', 10.0)
 
         # 撞击完成后：先后退一小段，再连续左跳两次
         self.declare_parameter('after_hit_backoff_distance_m', 0.30)
-        self.declare_parameter('after_hit_backoff_speed', 0.40)
+        self.declare_parameter('after_hit_backoff_speed', 0.30)
         self.declare_parameter('after_hit_left_jump_count', 2)
 
         # 左跳完成后：前进并识别两个蓝色障碍物，按虚线侧选择其中一个居中
         # 之前虚线在左边 -> 对齐右边障碍物；之前虚线在右边 -> 对齐左边障碍物
-        self.declare_parameter('post_hit_obstacle_forward_speed', 0.40)
-        self.declare_parameter('post_hit_obstacle_search_forward_speed', 0.40)
+        self.declare_parameter('post_hit_obstacle_forward_speed', 0.30)
+        self.declare_parameter('post_hit_obstacle_search_forward_speed', 0.30)
         self.declare_parameter('post_hit_obstacle_trigger_distance_m', 0.20)
         self.declare_parameter('post_hit_obstacle_align_vy_k', 0.35)
-        self.declare_parameter('post_hit_obstacle_align_vy_max', 0.20)
-        self.declare_parameter('post_hit_obstacle_align_vy_min', 0.10)
+        self.declare_parameter('post_hit_obstacle_align_vy_max', 0.30)
+        self.declare_parameter('post_hit_obstacle_align_vy_min', 0.20)
         self.declare_parameter('post_hit_obstacle_center_px_deadband', 7)
 
         # 对齐选中障碍物并到达距离后：转向 -> 前进 -> 反向转向 -> 最后前进
@@ -1332,7 +1332,7 @@ class ObstacleDashedTaskNode(Node):
         self.declare_parameter('post_hit_obs_turn_wz', 0.30)
         self.declare_parameter('post_hit_obs_turn_tolerance_deg', 1.5)
         self.declare_parameter('post_hit_obs_forward_distance_m', 0.40)
-        self.declare_parameter('post_hit_obs_forward_speed', 0.40)
+        self.declare_parameter('post_hit_obs_forward_speed', 0.30)
         # 第二次转回后，先按 TF 向前走一段固定距离，再进入最终横向黄线识别对正
         self.declare_parameter('post_hit_final_forward_distance_m', 0.20)
         self.declare_parameter('post_hit_final_forward_speed', 0.40)
@@ -1341,14 +1341,14 @@ class ObstacleDashedTaskNode(Node):
         self.declare_parameter('final_yellow_stop_line_y_ratio', 0.95)
         self.declare_parameter('final_yellow_align_wz_k', 1.20)
         self.declare_parameter('final_yellow_align_wz_max', 0.30)
-        self.declare_parameter('final_yellow_align_wz_min', 0.10)
+        self.declare_parameter('final_yellow_align_wz_min', 0.15)
         self.declare_parameter('final_yellow_tilt_deadband_deg', 1.5)
         self.declare_parameter('final_yellow_done_tilt_deg', 3.0)
-        self.declare_parameter('final_yellow_confirm_count', 2)
+        self.declare_parameter('final_yellow_confirm_count', 1)
 
         # 全局最终收尾阶段：所有流程完成后，右跳 -> 前进识别横向黄线并矫正 -> 左跳一次。
         # 黄线检测仍复用 final_yellow.* 的 HSV/ROI/形状过滤参数。
-        self.declare_parameter('global_final_yellow_forward_speed', 0.40)
+        self.declare_parameter('global_final_yellow_forward_speed', 0.30)
         self.declare_parameter('global_final_yellow_stop_line_y_ratio', 1.0)
         self.declare_parameter('global_final_yellow_confirm_count', 2)
 
@@ -2279,7 +2279,7 @@ class ObstacleDashedTaskNode(Node):
         self._inc_life_count()
         self.Ctrl.Send_cmd(self.msg)
         self.get_logger().info('[RIGHT_JUMP] send mode=16 gait=0')
-        self.Ctrl.Wait_finish(16, 0)
+        self.Ctrl.Wait_finish(16, 3)
 
         self.msg.mode = 12
         self.msg.gait_id = 0
@@ -2512,6 +2512,11 @@ class ObstacleDashedTaskNode(Node):
             self.current_turn_angle_rad = self.post_hit_obs_turn_angle_rad
             self.current_turn_tolerance_rad = self.post_hit_obs_turn_tolerance_rad
             self.current_turn_wz = self.post_hit_obs_turn_wz
+            self.get_logger().warn(
+                f'[POST_HIT_OBS_TURN_1] use dashed_side to turn: '
+                f'dashed_side={self.dashed_side}, turn_dir={self.current_turn_dir}, '
+                f'wz_cmd={self.current_turn_dir * abs(self.current_turn_wz):.3f}'
+            )
             if self.turn_start_yaw is None:
                 self.get_logger().warn('[POST_HIT_OBS_TURN_1] TF yaw unavailable at state enter')
 
@@ -2526,6 +2531,11 @@ class ObstacleDashedTaskNode(Node):
             self.current_turn_angle_rad = self.post_hit_obs_turn_angle_rad
             self.current_turn_tolerance_rad = self.post_hit_obs_turn_tolerance_rad
             self.current_turn_wz = self.post_hit_obs_turn_wz
+            self.get_logger().warn(
+                f'[POST_HIT_OBS_TURN_2] reverse first turn: '
+                f'dashed_side={self.dashed_side}, turn_dir={self.current_turn_dir}, '
+                f'wz_cmd={self.current_turn_dir * abs(self.current_turn_wz):.3f}'
+            )
             if self.turn_start_yaw is None:
                 self.get_logger().warn('[POST_HIT_OBS_TURN_2] TF yaw unavailable at state enter')
 
@@ -2730,22 +2740,29 @@ class ObstacleDashedTaskNode(Node):
 
     def get_post_hit_obs_first_turn_dir(self) -> int:
         """
-        撞击后对齐障碍物到达距离后的第一次转向方向。
+        撞击后到达蓝色障碍物距离阈值后的第一次转向方向。
 
-        规则：
-        - 当前对齐左边障碍物：左转，返回 +1
-        - 当前对齐右边障碍物：右转，返回 -1
+        现在不再根据 selected_obstacle_after_hit_side 判断，
+        而是直接根据前面识别到的黄色竖直虚线方向 dashed_side 判断：
+
+        - dashed_side == 'left'
+            说明之前虚线在左边，流程里会偏向右侧障碍物路线，
+            第一次转向按右转处理，返回 -1。
+
+        - dashed_side == 'right'
+            说明之前虚线在右边，流程里会偏向左侧障碍物路线，
+            第一次转向按左转处理，返回 +1。
 
         当前假设 wz > 0 是左转，wz < 0 是右转。
-        如果实测方向反了，把这里的 +1 / -1 对调。
+        如果实测方向反了，只需要把这里的 +1 / -1 对调。
         """
-        if self.selected_obstacle_after_hit_side == 'left':
+        if self.dashed_side == 'right':
             return 1
-        if self.selected_obstacle_after_hit_side == 'right':
+        if self.dashed_side == 'left':
             return -1
 
         self.get_logger().warn(
-            '[POST_HIT_OBS] selected_obstacle_after_hit_side is None, fallback first turn LEFT',
+            '[POST_HIT_OBS] dashed_side is None, fallback first turn LEFT',
             throttle_duration_sec=1.0
         )
         return 1
@@ -3557,7 +3574,7 @@ class ObstacleDashedTaskNode(Node):
                     self.get_logger().info(
                         f'[POST_HIT_OBS] one obstacle close enough: '
                         f'depth={d:.3f}/{self.post_hit_obstacle_trigger_distance_m:.3f}, '
-                        f'selected_side={self.selected_obstacle_after_hit_side}, go post-hit turn task'
+                        f'dashed_side={self.dashed_side}, go post-hit turn task'
                     )
                     self.send_motion_cmd(0.0, 0.0, 0.0)
                     self.enter_state(self.POST_HIT_OBS_TURN_1)
@@ -3595,7 +3612,7 @@ class ObstacleDashedTaskNode(Node):
                 self.get_logger().info(
                     f'[POST_HIT_OBS] selected obstacle dist={d:.3f} <= '
                     f'{self.post_hit_obstacle_trigger_distance_m:.3f}, '
-                    f'selected_side={self.selected_obstacle_after_hit_side}, go post-hit turn task'
+                    f'dashed_side={self.dashed_side}, go post-hit turn task'
                 )
                 self.send_motion_cmd(0.0, 0.0, 0.0)
                 self.enter_state(self.POST_HIT_OBS_TURN_1)
