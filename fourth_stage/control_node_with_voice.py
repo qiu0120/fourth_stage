@@ -3,6 +3,7 @@
 
 import math
 import time
+import os
 from dataclasses import dataclass
 from typing import Dict, Any, Tuple, List, Optional
 from threading import Thread, Lock
@@ -39,6 +40,57 @@ class ControlParameterValueKind:
     kS64 = 2
     kVEC_X_DOUBLE = 3
     kMAT_X_DOUBLE = 4
+
+
+class VoicePlayer:
+    """
+    比赛语音播报：提前准备 wav 文件，识别到对应目标时异步 aplay 播放。
+    重点：播放在单独线程里执行，不阻塞 ROS2 状态机和速度控制循环。
+    """
+    def __init__(self, voice_dir: str = '/home/cyberdog_sim/voice', enabled: bool = True):
+        self.voice_dir = voice_dir
+        self.enabled = bool(enabled)
+        self.lock = Lock()
+        self.playing = False
+
+        self.voice_files = {
+            'bar': 'bar.wav',                  # 识别到限高杆
+            'obstacle': 'obstacle.wav',        # 识别到无法跨越障碍
+            'cola': 'cola.wav',                # 识别到可乐瓶
+            'orange_ball': 'orange_ball.wav',  # 识别到橙色小球
+            'football': 'football.wav',        # 识别到足球
+            # 兼容当前代码里的检测类型命名
+            'blue_ball': 'orange_ball.wav',
+            'white_ball': 'football.wav',
+        }
+
+    def play_async(self, key: str) -> bool:
+        if not self.enabled:
+            return False
+        if key not in self.voice_files:
+            print(f'[VOICE] unknown key: {key}')
+            return False
+
+        with self.lock:
+            # 避免多个音频叠在一起播。如果正在播报，就跳过本次播报。
+            if self.playing:
+                print(f'[VOICE] busy, skip key={key}')
+                return False
+            self.playing = True
+
+        def _run():
+            try:
+                path = os.path.join(self.voice_dir, self.voice_files[key])
+                if os.path.exists(path):
+                    os.system(f'aplay "{path}" >/dev/null 2>&1')
+                else:
+                    print(f'[VOICE] file not found: {path}')
+            finally:
+                with self.lock:
+                    self.playing = False
+
+        Thread(target=_run, daemon=True).start()
+        return True
 
 
 class yaml_pub(Node):
@@ -1100,6 +1152,8 @@ class ObstacleDashedTaskNode(Node):
         self.declare_parameter('depth_topic', '/d435/depth/d435_depth/depth/image_raw')
         self.declare_parameter('control_hz', 30.0)
         self.declare_parameter('show_debug_vis', True)
+        self.declare_parameter('voice_enabled', True)
+        self.declare_parameter('voice_dir', '/home/cyberdog_sim/voice')
 
         # ============================================================
         # 调试用：指定程序启动后的初始状态
@@ -1219,7 +1273,7 @@ class ObstacleDashedTaskNode(Node):
         self.declare_parameter('global_lateral_search_vy', 0.30)
         self.declare_parameter('global_center_stable_frames', 1)
         self.declare_parameter('global_after_task_shift_vy', 0.30)
-        self.declare_parameter('global_after_task_shift_distance_m', 0.70)
+        self.declare_parameter('global_after_task_shift_distance_m', 0.75)
         # 障碍物流程完成后，如果虚线在右边，左移距离更大
         self.declare_parameter('global_after_obstacle_shift_distance_left_dash_m', 0.10)
         self.declare_parameter('global_after_obstacle_shift_distance_right_dash_m', 1.0)
@@ -1258,8 +1312,9 @@ class ObstacleDashedTaskNode(Node):
         self.declare_parameter('dashed_center_stable_frames', 3)
 
         # 黄线开始对齐前，先朝虚线所在方向横移一小段
+        # 现在不再按时间结束，而是用 TF 判断横向位移达到 dashed_pre_shift_distance_m 后结束。
         self.declare_parameter('dashed_pre_shift_speed', 0.25)
-        self.declare_parameter('dashed_pre_shift_duration_s', 0.35)
+        self.declare_parameter('dashed_pre_shift_distance_m', 0.35)
 
         # 偏置对齐目标，单位：像素
         # 左边有虚线：目标点 = 图像中心 + offset，也就是中间偏右
@@ -1270,8 +1325,8 @@ class ObstacleDashedTaskNode(Node):
         self.declare_parameter('follow_align_vy_k', 0.18)
         # FOLLOW_DASHED_UNTIL_LOST 阶段单独使用的横向速度上下限，
         # 不再和 ALIGN_DASHED_LINE 共用 dashed_align_vy_min / dashed_align_vy_max。
-        self.declare_parameter('follow_align_vy_max', 0.20)
-        self.declare_parameter('follow_align_vy_min', 0.10)
+        self.declare_parameter('follow_align_vy_max', 0.15)
+        self.declare_parameter('follow_align_vy_min', 0.05)
         self.declare_parameter('dashed_lost_stop_frames', 2)
 
         # =========================
@@ -1406,6 +1461,8 @@ class ObstacleDashedTaskNode(Node):
         self.depth_topic = self.get_parameter('depth_topic').value
         self.control_hz = float(self.get_parameter('control_hz').value)
         self.show_debug_vis = bool(self.get_parameter('show_debug_vis').value)
+        self.voice_enabled = bool(self.get_parameter('voice_enabled').value)
+        self.voice_dir = str(self.get_parameter('voice_dir').value)
         self.initial_state = str(self.get_parameter('initial_state').value)
         self.debug_dashed_side = str(self.get_parameter('debug_dashed_side').value).lower().strip()
 
@@ -1449,7 +1506,7 @@ class ObstacleDashedTaskNode(Node):
         self.dashed_center_stable_frames = int(self.get_parameter('dashed_center_stable_frames').value)
 
         self.dashed_pre_shift_speed = float(self.get_parameter('dashed_pre_shift_speed').value)
-        self.dashed_pre_shift_duration_s = float(self.get_parameter('dashed_pre_shift_duration_s').value)
+        self.dashed_pre_shift_distance_m = float(self.get_parameter('dashed_pre_shift_distance_m').value)
         self.dashed_target_offset_px = int(self.get_parameter('dashed_target_offset_px').value)
 
         self.follow_forward_speed = float(self.get_parameter('follow_forward_speed').value)
@@ -1545,6 +1602,11 @@ class ObstacleDashedTaskNode(Node):
         self.latest_bgr = None
         self.latest_depth = None
 
+        # 语音播报：用事件 ID 防止同一个触发点重复播报。
+        # bar_1 / bar_2 可以分别播报；同一个目标类型只在准备撞击时播一次。
+        self.voice = VoicePlayer(self.voice_dir, enabled=self.voice_enabled)
+        self.voice_events_spoken = set()
+
         self.rgb_sub = self.create_subscription(
             Image,
             self.rgb_topic,
@@ -1578,7 +1640,9 @@ class ObstacleDashedTaskNode(Node):
         # 第一次看到虚线时，记录它在图像左边还是右边。
         # 后续预横移和偏置对齐都会使用这个方向，不在 ALIGN 状态里清空。
         self.dashed_side = None          # None / 'left' / 'right'
-        self.dashed_pre_shift_start_time = None
+        # DASH_PRE_SIDE_SHIFT 不再按时间结束，而是记录 TF 起点，按横向位移结束。
+        self.dashed_pre_shift_start_pose = None
+        self.dashed_pre_shift_dir_sign = 0.0
 
         # 后续任务使用的 TF 起点
         self.post_forward_start_pose = None
@@ -1715,6 +1779,53 @@ class ObstacleDashedTaskNode(Node):
             'right jump -> yellow forward align -> one left jump -> DONE'
         )
         self.enter_state(self.GLOBAL_FINAL_RIGHT_JUMP)
+
+    def speak_event_once(self, event_id: str, voice_key: str):
+        """
+        在指定事件第一次发生时播报一次。
+        event_id 用来防重复，例如 bar_1、bar_2、obstacle_1、target_cola。
+        voice_key 对应 VoicePlayer.voice_files 里的音频 key。
+        """
+        if not getattr(self, 'voice_enabled', True):
+            return
+        if event_id in self.voice_events_spoken:
+            return
+        played = self.voice.play_async(voice_key)
+        self.voice_events_spoken.add(event_id)
+        self.get_logger().info(f'[VOICE] event={event_id}, key={voice_key}, played={played}')
+
+    def speak_bar_at_trigger(self):
+        # 两次限高杆分别播报：bar_1、bar_2
+        event_id = f'bar_{self.completed_bar_count + 1}'
+        self.speak_event_once(event_id, 'bar')
+
+    def speak_obstacle_at_trigger(self):
+        event_id = f'obstacle_{self.completed_obstacle_count + 1}'
+        self.speak_event_once(event_id, 'obstacle')
+
+    def target_voice_key(self, det_type: str) -> Optional[str]:
+        """
+        当前代码里的目标类型与赛题播报类型映射。
+        cola       -> 识别到可乐瓶
+        blue_ball  -> 识别到橙色小球（如果你后续改成 orange_ball，也兼容）
+        white_ball -> 识别到足球（如果你后续改成 football，也兼容）
+        """
+        if det_type == 'cola':
+            return 'cola'
+        if det_type in ('orange_ball', 'blue_ball'):
+            return 'orange_ball'
+        if det_type in ('football', 'white_ball'):
+            return 'football'
+        return None
+
+    def speak_target_at_hit_trigger(self, det_type: str):
+        key = self.target_voice_key(det_type)
+        if key is None:
+            self.get_logger().warn(f'[VOICE] no voice mapping for target det_type={det_type}')
+            return
+        # 三个目标物体每类只在真正准备撞击时播一次
+        event_id = f'target_{key}'
+        self.speak_event_once(event_id, key)
 
     def is_obstacle_flow_state(self) -> bool:
         return self.state in {
@@ -2541,9 +2652,19 @@ class ObstacleDashedTaskNode(Node):
             self.send_motion_cmd(0.0, 0.0, 0.0)
 
         if new_state == self.DASH_PRE_SIDE_SHIFT:
-            self.dashed_pre_shift_start_time = self.now_s()
+            self.dashed_pre_shift_start_pose = self.get_current_pose_2d()
+            self.dashed_pre_shift_dir_sign = self.get_pre_shift_dir_sign()
             self.dashed_center_count = 0
             self.dashed_lost_count = 0
+
+            if self.dashed_pre_shift_start_pose is None:
+                self.get_logger().warn('[DASH_PRE_SHIFT] TF unavailable when entering state')
+
+            self.get_logger().info(
+                f'[DASH_PRE_SHIFT] enter: side={self.dashed_side}, '
+                f'dir_sign={self.dashed_pre_shift_dir_sign:.1f}, '
+                f'target_dist={self.dashed_pre_shift_distance_m:.3f}m'
+            )
 
         if new_state == self.ALIGN_DASHED_LINE:
             self.dashed_center_count = 0
@@ -2899,12 +3020,44 @@ class ObstacleDashedTaskNode(Node):
             return img_center_x - self.dashed_target_offset_px
         return img_center_x
 
-    def get_pre_shift_vy(self) -> float:
+    def get_pre_shift_dir_sign(self) -> float:
+        """
+        DASH_PRE_SIDE_SHIFT 的横移方向符号。
+
+        设计意图：
+          dashed_side == 'left'  -> 朝左侧虚线方向横移
+          dashed_side == 'right' -> 朝右侧虚线方向横移
+
+        注意：如果实测方向反了，只需要把这里的 1.0 和 -1.0 对调。
+        """
         if self.dashed_side == 'left':
-            return abs(self.dashed_pre_shift_speed)
+            return 1.0
         if self.dashed_side == 'right':
-            return -abs(self.dashed_pre_shift_speed)
+            return -1.0
         return 0.0
+
+    def get_pre_shift_vy(self) -> float:
+        return self.get_pre_shift_dir_sign() * abs(self.dashed_pre_shift_speed)
+
+    def get_local_lateral_displacement_from_start(self, start_pose, current_pose) -> float:
+        """
+        计算 current_pose 相对 start_pose 的横向位移。
+
+        start_pose/current_pose 格式为 (x, y, yaw)。
+        返回的是以 start_pose 的 yaw 为基准的侧向位移，避免把前后漂移算进预横移距离。
+        """
+        if start_pose is None or current_pose is None:
+            return 0.0
+
+        sx, sy, syaw = start_pose
+        cx, cy, _ = current_pose
+
+        dx = cx - sx
+        dy = cy - sy
+
+        # 起始朝向左侧法向量：(-sin(yaw), cos(yaw))
+        lateral = -math.sin(syaw) * dx + math.cos(syaw) * dy
+        return float(lateral)
 
     def compute_dashed_align_vy(
         self,
@@ -3252,6 +3405,8 @@ class ObstacleDashedTaskNode(Node):
                     throttle_duration_sec=0.2
                 )
                 if d is not None and d < self.bar_trigger_distance_m:
+                    # 限高杆：靠近到规定距离、准备开始搜索目标物体时播报
+                    self.speak_bar_at_trigger()
                     self.enter_state(self.BAR_SEARCH_TARGET)
                     return
 
@@ -3292,6 +3447,8 @@ class ObstacleDashedTaskNode(Node):
                 throttle_duration_sec=0.2
             )
             if d is not None and d < self.hit_trigger_distance_m:
+                # 目标物体：靠近到撞击距离、刚进入撞击状态前播报
+                self.speak_target_at_hit_trigger(target.det_type)
                 self.enter_state(self.BAR_HIT_TARGET)
                 return
 
@@ -3373,6 +3530,8 @@ class ObstacleDashedTaskNode(Node):
                     )
 
                     if obstacle_dist <= self.obstacle_trigger_distance_m:
+                        # 无法跨越障碍：靠近到规定距离、准备绕障前播报
+                        self.speak_obstacle_at_trigger()
                         self.get_logger().info(
                             f'[OBS_ALIGN] obstacle_dist={obstacle_dist:.3f} <= '
                             f'{self.obstacle_trigger_distance_m:.3f}, switch to dashed align'
@@ -3423,27 +3582,62 @@ class ObstacleDashedTaskNode(Node):
                     self.enter_state(self.FOLLOW_DASHED_UNTIL_LOST)
 
         elif self.state == self.DASH_PRE_SIDE_SHIFT:
-            if self.dashed_side is None:
+            if self.dashed_side not in ('left', 'right'):
+                self.get_logger().warn('[DASH_PRE_SHIFT] dashed_side is None, skip pre-shift')
                 self.enter_state(self.ALIGN_DASHED_LINE)
                 return
 
-            elapsed = self.now_s() - self.state_enter_time
+            if self.dashed_pre_shift_dir_sign == 0.0:
+                self.dashed_pre_shift_dir_sign = self.get_pre_shift_dir_sign()
 
-            if elapsed < self.dashed_pre_shift_duration_s:
+            if self.dashed_pre_shift_start_pose is None:
+                self.dashed_pre_shift_start_pose = self.get_current_pose_2d()
+                if self.dashed_pre_shift_start_pose is None:
+                    vy = self.get_pre_shift_vy()
+                    self.send_motion_cmd(0.0, vy, 0.0)
+                    self.get_logger().warn(
+                        f'[DASH_PRE_SHIFT] start TF unavailable, keep shifting vy={vy:.3f}',
+                        throttle_duration_sec=0.5
+                    )
+                    return
+
+            current_pose = self.get_current_pose_2d()
+            if current_pose is None:
                 vy = self.get_pre_shift_vy()
                 self.send_motion_cmd(0.0, vy, 0.0)
-
-                self.get_logger().info(
-                    f'[DASH_PRE_SHIFT] side={self.dashed_side}, '
-                    f'vy={vy:.3f}, elapsed={elapsed:.2f}/{self.dashed_pre_shift_duration_s:.2f}',
-                    throttle_duration_sec=0.2
+                self.get_logger().warn(
+                    f'[DASH_PRE_SHIFT] current TF unavailable, keep shifting vy={vy:.3f}',
+                    throttle_duration_sec=0.5
                 )
-            else:
+                return
+
+            lateral = self.get_local_lateral_displacement_from_start(
+                self.dashed_pre_shift_start_pose,
+                current_pose
+            )
+            target_abs = abs(self.dashed_pre_shift_distance_m)
+            moved_along_target = lateral * self.dashed_pre_shift_dir_sign
+            target_signed = self.dashed_pre_shift_dir_sign * target_abs
+
+            if moved_along_target >= target_abs:
+                self.send_motion_cmd(0.0, 0.0, 0.0)
                 self.get_logger().info(
-                    f'[DASH_PRE_SHIFT] finished, go ALIGN_DASHED_LINE, '
-                    f'side={self.dashed_side}, target_x={self.get_dashed_target_x():.1f}'
+                    f'[DASH_PRE_SHIFT] done by TF: side={self.dashed_side}, '
+                    f'lateral={lateral:.3f}, target={target_signed:.3f}, '
+                    f'go ALIGN_DASHED_LINE'
                 )
                 self.enter_state(self.ALIGN_DASHED_LINE)
+                return
+
+            vy = self.get_pre_shift_vy()
+            self.send_motion_cmd(0.0, vy, 0.0)
+
+            self.get_logger().info(
+                f'[DASH_PRE_SHIFT] moving by TF: side={self.dashed_side}, '
+                f'lateral={lateral:.3f}, target={target_signed:.3f}, '
+                f'moved={moved_along_target:.3f}/{target_abs:.3f}, vy={vy:.3f}',
+                throttle_duration_sec=0.2
+            )
 
         elif self.state == self.FOLLOW_DASHED_UNTIL_LOST:
             if dashed is None:
@@ -3589,6 +3783,8 @@ class ObstacleDashedTaskNode(Node):
                 )
 
                 if d is not None and d < self.hit_trigger_distance_m:
+                    # 目标物体：靠近到撞击距离、刚进入撞击状态前播报
+                    self.speak_target_at_hit_trigger(target.det_type)
                     self.enter_state(self.HIT_TARGET)
 
         elif self.state == self.HIT_TARGET:
